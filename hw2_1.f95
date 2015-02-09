@@ -23,6 +23,8 @@ program main
   logical flag
   integer stat(MPI_STATUS_SIZE)
 
+  double precision :: time1, time2, dur,gdur
+
   call MPI_INIT(ierr)
   call MPI_COMM_RANK(MPI_COMM_WORLD, rank, ierr)
   call MPI_COMM_SIZE(MPI_COMM_WORLD, numrank, ierr)
@@ -48,17 +50,28 @@ program main
 
     lstart = rank*nrows_l
     lend = lstart + nrows_l
-
+    time1= MPI_Wtime()
     call calc_mandel(lstart, lend, nx, ny, static_l_s)
     call static_run(static_l_s, size(static_l_s,1), numrank, rank)
+    time2= MPI_Wtime()
     deallocate(static_l_s)
   end if
   
   if(arg3_str == "dynamic") then
     nrows_l = 1
     allocate(dyn_l_s((nrows_l)*(ny)))
+    time1= MPI_Wtime()
     call dynamic_run(dyn_l_s, size(dyn_l_s,1), numrank, rank)
+    time2= MPI_Wtime()
     deallocate(dyn_l_s)
+  end if
+  
+  dur=time2-time1
+  print *, dur
+  call MPI_Reduce(dur, gdur, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD, ierr)
+  
+  if(rank==0) then
+    print *, arg3_str, numrank, dur
   end if
   call MPI_FINALIZE(ierr)
 
